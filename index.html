@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="utf-8">
+<head>
+ <title>Min:Median Wages per State</title>
+</head>
+<style>
+
+.states {
+  fill: none;
+  stroke: #fff;
+  stroke-linejoin: round;
+}
+
+</style>
+<body>
+
+<div><h1>EPA per State</h1></div>
+<div id="title"></div>
+
+
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script src="http://d3js.org/queue.v1.min.js"></script>
+<script src="http://d3js.org/topojson.v1.min.js"></script>
+<script>
+
+var width = 980,
+    height = 600;
+
+//define domain
+var color_domain = [-101, -50, -25, -10, 0, 10, 25]
+var ext_color_domain = [-101, -50, -25, -10, 0, 10, 25]
+var legend_labels = ["< -50%", "-50% to -25%", "-24% to -10%", "-9% to 0%", "1% to 10%", "10% to 25%", "> 25%"]   
+//apply colors 
+var color = d3.scale.threshold()
+    .domain(color_domain)
+    .range(["#ccc", "#f56a29", "#c37540", "#a78158", "#808d6f", "#599887", "#32a49e", "#0cb0b6"]);
+
+var projection = d3.geo.albersUsa()
+    .scale(1280)
+    .translate([width / 2, height / 2]);
+
+var path = d3.geo.path()
+    .projection(projection);
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+//start    
+var defs = svg.append("defs");
+//testing a different way to pattern
+/*var allpatterns = defs.selectAll("pattern")
+    .data(color.range())
+  .enter().append('svg:pattern')
+    .attr('id', function(d, i) { return "pattern-" + i; })
+    .attr('width', 1)
+    .attr('height', 16)
+    .attr('patternUnits', 'userSpaceOnUse'); 
+
+allpatterns
+  .append('svg:rect')
+    .attr('width', 16)
+    .attr('height', 16)
+    .attr('fill', function(d, i) { return color(i); });
+
+allpatterns
+  .append('svg:image')
+    .attr('width', 16)
+    .attr('height', 16)
+    .attr('xlink:href', 'somepattern.gif');
+//end*/
+
+//bind pattern    
+svg
+  .append('defs')
+  .append('pattern')
+    .attr('id', 'diagonalHatch')
+    .attr('patternUnits', 'userSpaceOnUse')
+    .attr('width', 4)
+    .attr('height', 4)
+//define the line pattern
+  .append('path')
+    .attr('d', 'M-1,1 l2,-2 M0,4 l4,-4 M3,5 l2,-2')
+    .attr('stroke', '#000000')
+    .attr('stroke-width', 1);
+
+
+queue()
+    .defer(d3.json, "us.json")
+    .defer(d3.tsv, "epa.tsv")
+    .await(ready);
+
+function ready(error, us, ratio) {
+  var rateById = {};
+  //color function
+  ratio.forEach(function(d) { rateById[d.id] = +d.rate; });
+  
+  svg.append("g")
+      .attr("class", "states")
+    .selectAll("path")
+      .data(topojson.feature(us, us.objects.states).features)
+    .enter().append("path")
+      .attr("d", path)
+      //.style("fill", function(d, i) {
+      .style("fill", function(d){
+      var value = rateById[d.id];
+      if(value=="-37"){
+      	//return "url(#pattern-" + 1 + ")";
+      	return "url(#diagonalHatch)";
+      }else if (value){
+      return color(value);
+      }else{
+      	return "#CCC";
+      }
+      	});
+
+  svg.append("path")
+      .datum(topojson.mesh(us, us.objects.states, function(a, b) { return a !== b; }))
+      .attr("class", "states")
+      .attr("d", path);
+}
+</script>
